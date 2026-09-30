@@ -1568,29 +1568,54 @@
             $('#liveStatusText').text('Loading...');
 
             if (!liveMap) {
-                liveMap = L.map('liveMap').setView([22.3072, 73.1812], 13);
+                liveMap = L.map('liveMap', {
+                    maxZoom: 20
+                }).setView([22.3072, 73.1812], 13);
 
-                // Satellite base layer — full global coverage, no blank tiles at any zoom level
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-                    maxZoom: 19
-                }).addTo(liveMap);
+                // Google Maps Hybrid (Satellite + Roads + Shops + POIs)
+                const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: 'Map data &copy; Google Maps'
+                });
 
-                // Labels overlay — adds road names, place names, and boundaries on top of the imagery
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                // Google Maps Streets (Standard Roadmap)
+                const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: 'Map data &copy; Google Maps'
+                });
+
+                // OpenStreetMap (100% Free, NO API key required, NO watermark)
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
                     maxZoom: 19,
-                    pane: 'overlayPane'
-                }).addTo(liveMap);
+                    subdomains: ['a', 'b', 'c'],
+                    attribution: '&copy; OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team'
+                });
+
+                // Esri World Imagery
+                const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    attribution: 'Tiles &copy; Esri'
+                });
+
+                // Set Google Streets as default
+                googleStreets.addTo(liveMap);
+
+                // Layer switcher control
+                const baseMaps = {
+                    "🗺️ Google Streets": googleStreets,
+                    "🛰️ Google Hybrid": googleHybrid,
+                    "🌐 OpenStreetMap": osm,
+                    "🌍 Esri Satellite": esriSat
+                };
+                L.control.layers(baseMaps, null, { position: 'topright' }).addTo(liveMap);
             }
             setTimeout(() => liveMap.invalidateSize(), 200);
 
             if (liveMarker) {
                 liveMap.removeLayer(liveMarker);
                 liveMarker = null;
-            }
-            if (livePolyline) {
-                liveMap.removeLayer(livePolyline);
-                livePolyline = null;
             }
 
             fetchLiveLocation(tripId, true);
@@ -1627,15 +1652,6 @@
                     }
 
                     const latlngs = trail.map(p => [p.lat, p.lng]);
-                    if (livePolyline) {
-                        livePolyline.setLatLngs(latlngs);
-                    } else if (latlngs.length > 0) {
-                        livePolyline = L.polyline(latlngs, {
-                            color: '#3b82f6',
-                            weight: 4
-                        }).addTo(liveMap);
-                    }
-
                     const curLat = res.current_lat ?? (latlngs.length ? latlngs[latlngs.length - 1][0] : null);
                     const curLng = res.current_lng ?? (latlngs.length ? latlngs[latlngs.length - 1][1] : null);
 

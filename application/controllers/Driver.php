@@ -422,6 +422,9 @@ class Driver extends CI_Controller
             'current_lat' => $trip->current_lat ? (float) $trip->current_lat : null,
             'current_lng' => $trip->current_lng ? (float) $trip->current_lng : null,
             'location_updated_at' => $trip->location_updated_at,
+            'lat' => $trip->current_lat ? (float) $trip->current_lat : null,
+            'lng' => $trip->current_lng ? (float) $trip->current_lng : null,
+            'updated_at' => $trip->location_updated_at,
             'trail' => $points
         ]);
     }
@@ -456,6 +459,37 @@ class Driver extends CI_Controller
 
         $this->load->view('header');
         $this->load->view('live_location_view', ['trip' => $trip]);
+        $this->load->view('footer');
+    }
+
+    public function live_location_free($id)
+    {
+        if (empty($id) || !is_numeric($id)) {
+            show_error('Invalid trip ID', 400);
+            return;
+        }
+
+        $trip = $this->db->where('id', $id)
+            ->where('admin_id', $this->vendor_id)
+            ->get('trips')
+            ->row_array();
+
+        if (!$trip) {
+            show_error('Trip not found', 404);
+            return;
+        }
+
+        $user = $this->db->where('id', $trip['user_id'])->get('users')->row_array();
+
+        $trip = array_merge($trip, [
+            'driver_name' => isset($user['name']) ? $user['name'] : '',
+            'driver_mobile' => isset($user['mobile']) ? $user['mobile'] : '',
+            'vehicle_name' => isset($user['vehical_name']) ? $user['vehical_name'] : '',
+            'vehicle_number' => isset($user['vehical_number']) ? $user['vehical_number'] : '',
+        ]);
+
+        $this->load->view('header');
+        $this->load->view('live_location_free_view', ['trip' => $trip]);
         $this->load->view('footer');
     }
     
